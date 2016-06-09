@@ -23,8 +23,15 @@ add PYTHONPATH (e.g. in bash):
 ```bash
 export PYTHONPATH="/path/to/clone/directory/wyominglib:$PYTHONPATH"
 ```
+## Dependencies
 
-## Examples:
+* numpy
+* h5py
+* BeautifulSoup
+* pandas
+
+
+## Examples
 ```python
 import wyominglib as wl
 
