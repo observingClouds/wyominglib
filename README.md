@@ -34,6 +34,7 @@ export PYTHONPATH="/path/to/clone/directory/wyominglib:$PYTHONPATH"
 ## Examples
 ```python
 import wyominglib as wl
+import numpy as np
 
 years = np.arange(2000,2003)
 for yr in years:
