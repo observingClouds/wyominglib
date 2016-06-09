@@ -1,18 +1,28 @@
 # Download and parse wyoming soundings into pandas DataFrames, then store to HDF5 file
 
-Original code: Philip Austin
-Source: https://github.com/phaustin/A405
-
 Raul Valenzuela
+&nbsp;
+
 raul.valenzuela@colorado.edu
+
+&nbsp;
+
+Original code: Philip Austin
+&nbsp;
+
+Source: https://github.com/phaustin/A405
 
 ## Install
 
 Clone the repo:
+```bash
 $git clone git@gitlab.com/rvalenzuela/wyominglib.git
+```
 
 add PYTHONPATH (e.g. in bash):
+```bash
 export PYTHONPATH="/path/to/clone/directory/wyominglib:$PYTHONPATH"
+```
 
 ## Examples:
 ```python
