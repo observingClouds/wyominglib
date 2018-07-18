@@ -15,18 +15,150 @@
 import h5py
 import numpy as np
 import pandas as pd
+from datetime import datetime
 
+source = "/Users/raulvalenzuela/Google Drive/WY_SOUNDINGS/"
 
-source = "/Users/raulvalenzuela/Dropbox/WY_SOUNDINGS"
+file_fmt = 'wyoming_samer_{}_{}.h5'
+
 colnames = ['pres','hgt','temp','dewp','relh','mixr'
             ,'wdir','sknt','thta','thte','thtv']
 
-def get_wysound_serie(year=None):
 
-    # TODO: needs to interpolate so it retrieves a
-    # homogeneous array
+def get_df_year(year, station=None):
 
-    f = h5py.File(source+"/wyoming_samer_stodgo_2000.h5", "r")
+    hfile = file_fmt.format(station, year)
+    f = h5py.File(source + hfile, "r")
+
+    all_dfs = list()
+    df_index = list()
+    for k in f.keys():
+        sound = f[k]['table'].value
+        # print k
+        idx = datetime.strptime(k, 'Y%Y%m%dZ%H')
+        df_index.append(idx)
+        if sound.size <= 1:
+            df = np.nan
+        else:
+            data = dict(pres=np.array([v[1][0] for v in sound]),
+                        hght=np.array([v[1][1] for v in sound]),
+                        temp=np.array([v[1][2] for v in sound]),
+                        dewp=np.array([v[1][3] for v in sound]),
+                        relh=np.array([v[1][4] for v in sound]),
+                        mixr=np.array([v[1][5] for v in sound]),
+                        drct=np.array([v[1][6] for v in sound]),
+                        sknt=np.array([v[1][7] for v in sound]),
+                        thta=np.array([v[1][8] for v in sound]),
+                        thte=np.array([v[1][9] for v in sound]),
+                        thtv=np.array([v[1][10] for v in sound])
+                        )
+            df = pd.DataFrame(data=data)
+
+        all_dfs.append(df)
+
+    data = {'sounding': all_dfs}
+
+    df = pd.DataFrame(data, index=df_index)
+
+    return df
+
+def get_raw(year, index=None, isel=0, station=None):
+
+    hfile = file_fmt.format(station, year)
+    f = h5py.File(source + hfile, "r")
+
+    for k in f.keys()[isel:isel+1]:
+
+        sound = f[k]['table'].value
+        print k
+        if sound.size <= 1:
+            data = np.array([np.nan]*48)
+            df = pd.DataFrame(data=data)
+        else:
+            data = dict(pres=np.array([v[1][0] for v in sound]),
+                        hght=np.array([v[1][1] for v in sound]),
+                        temp=np.array([v[1][2] for v in sound]),
+                        dewp=np.array([v[1][3] for v in sound]),
+                        relh=np.array([v[1][4] for v in sound]),
+                        mixr=np.array([v[1][5] for v in sound]),
+                        drct=np.array([v[1][6] for v in sound]),
+                        sknt=np.array([v[1][7] for v in sound]),
+                        thta=np.array([v[1][8] for v in sound]),
+                        thte=np.array([v[1][9] for v in sound]),
+                        thtv=np.array([v[1][10] for v in sound])
+                        )
+
+            if index in ['h','hgt','height']:
+                idx = data.pop('hght')
+                df = pd.DataFrame(data=data,index=idx)
+            elif index in ['p','pres','press']:
+                idx = data.pop('pres')
+                df = pd.DataFrame(data=data,index=idx)
+            else:
+                df = pd.DataFrame(data=data)
+
+    return df
+
+
+def get_interpolated(year, index=None, isel=0):
+
+    if index in ['h', 'hgt', 'height']:
+
+        raw = get_raw(year, index=index, isel=isel)
+
+        new_levels = np.arange(100, 5000, 100)
+
+        new_raw = raw.reindex(raw.index.union(new_levels))
+        interp_raw = new_raw.interpolate('index')
+
+    elif index in ['p','pres','press']:
+
+        raw = get_raw(year, index=index, isel=isel)
+
+        new_levels = np.arange(1000, 20, -10)
+
+        new_raw = raw.reindex(raw.index.union(new_levels))
+        interp_raw = new_raw.interpolate('index')
+
+        interp_raw = interp_raw.sort_index(ascending=False)
+
+    return interp_raw
+
+
+def get_pw(year, index='p', isel=0, station=None):
+
+    '''
+        Check sounding_tools.py in CDDIS_ZTD, which is giving
+        correct values of PW
+    '''
+
+    rho = 1000.  # [kg m-3]
+    g = 9.8  # [m s-2]
+
+    raw = get_raw(year, index=index, isel=isel, station=station)
+
+    try:
+        dp = raw.index[:-2]-raw.index[2:]  # [hPa]
+        dp = dp.values*100.  # [Pa]
+
+        r = raw.mixr.iloc[1:-1].values  # [g kg-1]
+        r = r/1000.  # [kg kg-1]
+
+        pw = (1/(rho*g))*np.sum(r*dp)  # [m]
+        pw = pw * 1000.  #[mm]
+
+        return pw
+    except AttributeError:
+        print 'Missing sounding'
+
+def get_wysound_serie(station=None, year=None):
+
+    ###
+    # Replaced by get_raw
+    ###
+
+    hfile = file_fmt.format(station, year)
+    f = h5py.File(source + hfile, "r")
 
     for k in f.keys():
 
@@ -231,7 +363,7 @@ def get_timeseries_freezh(year=None, location=None,
 
 def check_hgt_range(year=None):
 
-    f = h5py.File(source+"/wyoming_samer_stodgo_{}.h5".format(year),
+    f = h5py.File(source+file_fmt.format(year),
                   "r")
 
     min = np.array([])

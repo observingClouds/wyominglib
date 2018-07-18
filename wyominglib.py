@@ -263,17 +263,20 @@ def make_frames(html_doc):
 
     html_doc : string
                          web page from wyoming upperair sounding site
-                         http://weather.uwyo.edu/cgi-bin/sounding retrieved by
-                         the urllib module
+                         http://weather.uwyo.edu/cgi-bin/sounding
+                         retrieved by the urllib module
 
     Returns
     -------
 
     attr_dict : dict
-                         attr_dict dictionary with ['header', 'site_id','longitude','latitude', 'elevation', 'units']
+                         attr_dict dictionary with
+                         ['header', 'site_id','longitude','latitude',
+                         'elevation', 'units']
 
     sound_dict : dict
-                             sounding dictionary with sounding times as keys and sounding as dataframes
+                             sounding dictionary with sounding times
+                             as keys and sounding as dataframes
     """
     soup = BeautifulSoup(html_doc, 'html.parser')
     keep = list()
@@ -367,7 +370,7 @@ def download_wyoming(region=None, station=None, year=None,
                           station=st_num)
 
             url = url_template.format(**values)
-
+            print url
             # old urllib function
             # html_doc = urllib.request.urlopen(url)
 
