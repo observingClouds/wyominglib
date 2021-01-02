@@ -38,7 +38,7 @@
 import re
 import sys
 import urllib3
-
+import xarray as xr
 import h5py
 import numpy as np
 import pandas as pd
@@ -241,11 +241,10 @@ def parse_data(data_text):
         parse = fieldstruct.unpack_from
         the_line = all_lines[r]
         # print r, the_line
-        dataFields = parse(the_line.strip('\r\n'))
+        dataFields = parse(the_line.strip('\r\n').encode())
 
-        empty = '       '
-        dataFields = [float(number) if empty not in number else 
-                      np.nan for number in dataFields]
+        empty = '       '.encode()
+        dataFields = [float(number) if empty not in number else np.nan for number in dataFields]
 
         data_list.append(dataFields)
 
@@ -389,6 +388,9 @@ def download_wyoming(region=None, station=None, year=None,
             print(print_str.format(print_date, resp))
 
             thetime = date.strftime("Y%Y%m%dZ%H")
+            
+            r = xr.Dataset.from_dataframe(sounding_df)
+            r.to_netcdf(out_name.split('.')[0]+'__'+thetime+'.nc')
             store.put(thetime, sounding_df, format='table')
 
     attr_dict['history'] = "written by wyominglib.py"
@@ -414,3 +416,165 @@ def download_wyoming(region=None, station=None, year=None,
                 print(key, f.attrs[key])
             except OSError:
                 pass
+
+def write_sounding_netcdf(filename,dataframe,time):
+    """
+    Write sounding data to netcdf files
+    """
+    from netCDF4 import Dataset, date2num
+    import datetime
+    import sys
+
+    nc = Dataset(filename, 'w')
+    dim_rec = nc.createDimension('time', None)
+    dim_t = nc.createDimension('level', len(dataframe.hght))
+    
+    var_time = nc.createVariable('time',np.float64,('time'))
+    var_time.description = 'Observation time'
+    var_time.units = "seconds since 1970-01-01 00:00:00"
+    var_time.calendar = "standard"
+    var_time.axis="T"
+    var_hgt = nc.createVariable('height', np.float64, ('time', 'level',))
+    var_hgt.units = "m"
+    var_hgt.axis = "Y"
+    var_hgt.description = "height above sea level"
+    var_pres = nc.createVariable('pressure', np.float, ('time', 'level',))
+    var_pres.units = 'hPa'
+    var_temp = nc.createVariable('temperature', np.float, ('time', 'level',))
+    var_temp.units = 'deg C'
+    var_tau = nc.createVariable('dewpoint', np.float, ('time', 'level',))
+    var_tau.units = 'deg C'
+    var_rh = nc.createVariable('relative_humidity', np.float, ('time', 'level',))
+    var_rh.units = 'RH'
+    var_q = nc.createVariable('mixing_ratio', np.float, ('time', 'level',))
+    var_q.units = 'g kg^-1'
+    var_dir = nc.createVariable('wind_dir', np.float, ('time', 'level',))
+    var_dir.units = 'degrees'
+    var_spd = nc.createVariable('wind_speed', np.float, ('time', 'level',))
+    var_spd.units = 'knots'
+    var_theta_a = nc.createVariable('theta_a', np.float, ('time', 'level',))
+    var_theta_a.units = 'K'
+    var_theta_e = nc.createVariable('theta_e', np.float, ('time', 'level',))
+    var_theta_e.units = 'K'
+    var_theta_v = nc.createVariable('theta_v', np.float, ('time', 'level',))
+    var_theta_v.units = 'K'
+    
+    nc.title = 'Atmospheric soundings'
+    nc.creation_date = datetime.datetime.now().strftime("%d/%m%/%Y %H:%M")
+    nc.environment = 'env:{}, numpy:{}'.format(sys.version,np.__version__)
+
+    var_time[:] = date2num(time, "seconds since 1970-01-01")
+    var_hgt[0,:] = dataframe.hght.values
+    var_pres[0,:] = dataframe.pres.values
+    var_temp[0,:] = dataframe.temp.values
+    var_tau[0,:] = dataframe.dwpt.values
+    var_rh[0,:] = dataframe.relh.values
+    var_q[0,:] = dataframe.mixr.values
+    var_dir[0,:] = dataframe.drct.values
+    var_spd[0,:] = dataframe.sknt.values
+    var_theta_a[0,:] = dataframe.thta.values
+    var_theta_e[0,:] = dataframe.thte.values
+    var_theta_v[0,:] = dataframe.thtv.values
+
+    
+    nc.close()
+
+def download_wyoming_netcdf(region=None, station=None, year=None,
+                     date=None, dates=None, out_directory=None):
+    """
+    function to test downloading a sounding
+    from http://weather.uwyo.edu/cgi-bin/sounding and
+    creating an hdf file with soundings and attributes
+
+    see the notebook newsoundings.ipynb for use
+    """
+
+    st_num = station['number']
+    st_name = station['name']
+
+    url_template = ("http://weather.uwyo.edu/cgi-bin/sounding?"
+                    "region={region:s}"
+                    "&TYPE=TEXT%3ALIST"
+                    "&YEAR={year:s}"
+                    "&MONTH={month:s}"
+                    "&FROM={start:s}"
+                    "&TO={stop:s}"
+                    "&STNM={station:s}")
+
+    name_template = out_directory + '/wyoming_{0}_{1}_{2}.nc'
+
+    # Parse date to download and output h5 name
+    if date and year is None and dates is None:
+        dates = pd.date_range(start=date,
+                              periods=1,
+                              freq='12H')
+        dstr = dates[0].strftime('%Y%m%d%H')
+        out_name = name_template.format(region, st_name, dstr)
+    elif dates and date is None and year is None:
+        date0 = dates[0]
+        date1 = dates[1]
+        dates = pd.date_range(start=date0,
+                              end=date1,
+                              freq='12H')
+        dstr = dates[0].strftime('%Y%m%d%H-') + \
+               dates[-1].strftime('%Y%m%d%H')
+        out_name = name_template.format(region, st_name, dstr)
+    else:
+        yr = str(year)
+        dates = pd.date_range(start=yr + '-01-01 00:00',
+                              end=yr + '-12-31 12:00',
+                              freq='12H')
+        out_name = name_template.format(region, st_name, yr)
+
+    # start downloading for each date
+    for date in dates:
+        values = dict(region=region,
+                      year=date.strftime('%Y'),
+                      month=date.strftime('%m'),
+                      start=date.strftime('%d%H'),
+                      stop=date.strftime('%d%H'),
+                      station=st_num)
+
+        url = url_template.format(**values)
+        print(url)
+        # old urllib function
+        # html_doc = urllib.request.urlopen(url)
+
+        http = urllib3.PoolManager()
+        response = http.request('GET', url)
+        html_doc = response.data
+
+        at_dict, sounding_df, resp = make_frames(html_doc)
+        if resp == 'OK':
+            attr_dict = at_dict
+        else:
+            attr_dict = dict()
+
+        print_str = 'Read/Write sounding date {}: {}'
+        print_date = date.strftime('%Y-%m-%d_%HZ')
+        print(print_str.format(print_date, resp))
+
+        if resp == "NO SOUNDING":
+            continue
+        thetime = date.strftime("%Y%m%d%H")
+
+        # Find main levels
+        main_levels = [1000,925,850,700,500,400,300,200,100]
+
+        print(sounding_df.pres.values)
+
+        idx = np.where(np.in1d(sounding_df.pres.values,main_levels))[0]
+        if len(idx) != len(main_levels):
+            print("Not all requestested levels ({}) available: {}".format(main_levels,sounding_df.pres.values))
+            continue
+
+        write_sounding_netcdf("Sounding__BarbadosAirport__StdLevel__"+thetime+".nc",sounding_df.iloc[:],date)
+        
+        #r = xr.Dataset.from_dataframe(sounding_df)
+        #r.to_netcdf(out_name.split('.')[0]+'__'+thetime+'.nc')
+        #store.put(thetime, sounding_df, format='table')
+
+    attr_dict['history'] = "written by wyominglib.py"
+    key_list = ['header', 'site_id', 'longitude', 'latitude',
+                'elevation', 'units', 'history']
+
