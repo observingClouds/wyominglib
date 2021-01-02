@@ -1,5 +1,7 @@
 # Download and parse wyoming soundings into pandas DataFrames, then store to HDF5 file
 
+This is a fork of https://gitlab.com/rvalenzuela/wyominglib
+
 Raul Valenzuela
 &nbsp;
 
