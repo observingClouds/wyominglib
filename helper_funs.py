@@ -42,7 +42,7 @@ def make_tuple(in_dict,tupname='values'):
     the_tup: namedtuple
           named tuple with keys as attributes
     """
-    the_tup = namedtuple(tupname, in_dict.keys())
+    the_tup = namedtuple(tupname, list(in_dict.keys()))
     the_tup = the_tup(**in_dict)
     return the_tup
 

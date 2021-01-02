@@ -32,7 +32,7 @@ def get_df_year(year, station=None):
 
     all_dfs = list()
     df_index = list()
-    for k in f.keys():
+    for k in list(f.keys()):
         sound = f[k]['table'].value
         # print k
         idx = datetime.strptime(k, 'Y%Y%m%dZ%H')
@@ -67,10 +67,10 @@ def get_raw(year, index=None, isel=0, station=None):
     hfile = file_fmt.format(station, year)
     f = h5py.File(source + hfile, "r")
 
-    for k in f.keys()[isel:isel+1]:
+    for k in list(f.keys())[isel:isel+1]:
 
         sound = f[k]['table'].value
-        print k
+        print(k)
         if sound.size <= 1:
             data = np.array([np.nan]*48)
             df = pd.DataFrame(data=data)
@@ -149,7 +149,7 @@ def get_pw(year, index='p', isel=0, station=None):
 
         return pw
     except AttributeError:
-        print 'Missing sounding'
+        print('Missing sounding')
 
 def get_wysound_serie(station=None, year=None):
 
@@ -160,7 +160,7 @@ def get_wysound_serie(station=None, year=None):
     hfile = file_fmt.format(station, year)
     f = h5py.File(source + hfile, "r")
 
-    for k in f.keys():
+    for k in list(f.keys()):
 
         sound = f[k]['table'].value
 
@@ -180,11 +180,11 @@ def get_wysound_serie(station=None, year=None):
             # thtv = np.array([v[1][10] for v in sound])
             array = thte
 
-        print k
-        if k == f.keys()[0]:
+        print(k)
+        if k == list(f.keys())[0]:
             bigarray = array
         else:
-            print bigarray.shape, array.shape
+            print(bigarray.shape, array.shape)
             bigarray = np.vstack((bigarray, array))
 
     return bigarray
@@ -198,7 +198,7 @@ def get_df(sounding):
             array = np.vstack((array,row[1]))
         df = pd.DataFrame(data=array, columns=colnames)
     else:
-        print 'No sounding available'
+        print('No sounding available')
         df = pd.DataFrame()
 
     return df
@@ -304,7 +304,7 @@ def get_timeseries_freezh(year=None, location=None,
     from datetime import datetime
 
     if year is None:
-        years = range(2000, 2018)
+        years = list(range(2000, 2018))
     else:
         years = [year]
 
@@ -317,8 +317,8 @@ def get_timeseries_freezh(year=None, location=None,
         fname = "/wyoming_samer_{}_{}.h5"
         fpath = source + fname.format(location, yr)
         f = h5py.File(fpath, "r")
-        print 'Processing year: {}'.format(yr)
-        for k in f.keys():
+        print('Processing year: {}'.format(yr))
+        for k in list(f.keys()):
             sound = f[k]['table'].value
             t = np.append(t, datetime.strptime(k,'Y%Y%m%dZ%H'))
             if interp:
@@ -344,7 +344,7 @@ def get_timeseries_freezh(year=None, location=None,
                     if filter_ok:
                         if output == 'print':
                             txt = 'hgt={:1.0f}, temp={}'
-                            print txt.format(hght[idx], temp[idx])
+                            print(txt.format(hght[idx], temp[idx]))
                         else:
                             x = np.append(x, hght[idx])
                             y = np.append(y, temp[idx])
@@ -368,7 +368,7 @@ def check_hgt_range(year=None):
 
     min = np.array([])
     max = np.array([])
-    for k in f.keys():
+    for k in list(f.keys()):
         sound = f[k]['table'].value
         if sound.size > 1:
             hght = np.array([v[1][1] for v in sound])
@@ -378,4 +378,4 @@ def check_hgt_range(year=None):
 
     txt = 'top_min={:3.0f}, top_max={:3.0f}\nbot_min={:3.0f}, ' \
           'bot_max={:5.0f}'
-    print txt.format(max.min(), max.max(), min.min(), min.max())
+    print(txt.format(max.min(), max.max(), min.min(), min.max()))

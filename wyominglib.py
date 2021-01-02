@@ -370,7 +370,7 @@ def download_wyoming(region=None, station=None, year=None,
                           station=st_num)
 
             url = url_template.format(**values)
-            print url
+            print(url)
             # old urllib function
             # html_doc = urllib.request.urlopen(url)
 
